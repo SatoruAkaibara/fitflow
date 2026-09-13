@@ -1,20 +1,46 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SQLiteProvider } from 'expo-sqlite';
+import { Suspense, useState } from 'react';
+import {
+  initialWindowMetrics,
+  SafeAreaProvider,
+} from 'react-native-safe-area-context';
 
-export default function App() {
+import { AppLoadingScreen } from './src/components/AppLoadingScreen';
+import type { AppSection } from './src/components/FloatingNavigation';
+import { migrateDatabase } from './src/database/migrations';
+import { TodayScreen } from './src/screens/TodayScreen';
+import { TrainScreen } from './src/screens/TrainScreen';
+import { useAppTheme } from './src/theme/useAppTheme';
+
+function AppContent() {
+  const theme = useAppTheme();
+  const [activeSection, setActiveSection] = useState<AppSection>('today');
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      {activeSection === 'today' ? (
+        <TodayScreen onNavigate={setActiveSection} />
+      ) : (
+        <TrainScreen onNavigate={setActiveSection} />
+      )}
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <Suspense fallback={<AppLoadingScreen />}>
+        <SQLiteProvider
+          databaseName="fitflow.db"
+          onInit={migrateDatabase}
+          useSuspense
+        >
+          <AppContent />
+        </SQLiteProvider>
+      </Suspense>
+    </SafeAreaProvider>
+  );
+}
